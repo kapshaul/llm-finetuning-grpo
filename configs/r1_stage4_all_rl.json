@@ -1,0 +1,26 @@
+{
+  "backend": "tiny",
+  "stage": "all",
+  "model_name_or_path": "runs/r1-stage3-mixed-sft",
+  "dataset": "examples/data/all_scenarios_rl.jsonl",
+  "output_dir": "runs/r1-stage4-all-rl",
+  "seed": 42,
+  "device": "cpu",
+  "learning_rate": 0.0001,
+  "batch_size": 1,
+  "max_steps": 2,
+  "group_size": 4,
+  "update_epochs": 1,
+  "clip_epsilon": 0.2,
+  "beta": 0.04,
+  "reduction": "sequence",
+  "max_prompt_tokens": 1024,
+  "max_new_tokens": 64,
+  "max_seq_length": 2048,
+  "temperature": 1.0,
+  "top_p": 1.0,
+  "callbacks": {
+    "helpfulness": "examples.callbacks:toy_helpfulness",
+    "harmlessness": "examples.callbacks:toy_harmlessness"
+  }
+}

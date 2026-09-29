@@ -1,0 +1,13 @@
+{
+  "backend": "tiny",
+  "stage": "mixed_sft",
+  "dataset": "runs/r1-stage3/mixed_sft.jsonl",
+  "output_dir": "runs/r1-stage3-mixed-sft",
+  "seed": 42,
+  "device": "cpu",
+  "learning_rate": 0.0001,
+  "batch_size": 1,
+  "epochs": 2,
+  "max_prompt_tokens": 1024,
+  "max_seq_length": 2048
+}

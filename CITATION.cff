@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: >-
+  This software is a study implementation of the DeepSeek-R1 (v1) training
+  pipeline. If you use it, please also cite the DeepSeek-R1 paper listed under
+  references.
+title: "r1-grpo: an inspectable PyTorch study implementation of the DeepSeek-R1 (v1) pipeline"
+type: software
+version: 0.1.0
+authors:
+  - name: r1-grpo contributors
+references:
+  - type: article
+    title: "DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning"
+    authors:
+      - name: DeepSeek-AI
+    year: 2025
+    url: "https://arxiv.org/abs/2501.12948v1"
+    identifiers:
+      - type: doi
+        value: 10.48550/arXiv.2501.12948

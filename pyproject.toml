@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "r1-grpo"
+version = "0.1.0"
+description = "Inspectable pure-PyTorch study implementation of the DeepSeek-R1 (v1) GRPO training pipeline."
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["grpo", "reinforcement-learning", "llm", "deepseek-r1", "pytorch"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = ["torch>=2.6,<3"]
+
+[project.optional-dependencies]
+hf = ["transformers>=4.51,<5"]
+dev = ["pytest>=8,<10", "ruff>=0.11,<1"]
+
+[project.scripts]
+r1-grpo = "r1_grpo.cli:main"
+
+[project.urls]
+Paper = "https://arxiv.org/abs/2501.12948v1"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = ["slow: end-to-end tests that train the tiny offline fixture (a few seconds to ~30 s)"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["runs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+# Line length is enforced by `ruff format`; long strings/URLs are allowed.
+ignore = ["E501"]

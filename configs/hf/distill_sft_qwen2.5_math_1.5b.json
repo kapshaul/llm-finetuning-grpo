@@ -1,0 +1,13 @@
+{
+  "backend": "hf",
+  "stage": "distill",
+  "model_name_or_path": "Qwen/Qwen2.5-Math-1.5B",
+  "dataset": "runs/r1-stage3/mixed_sft.jsonl",
+  "output_dir": "runs/hf-distill-qwen2.5-math-1.5b",
+  "seed": 42,
+  "device": "cuda",
+  "learning_rate": 1e-05,
+  "batch_size": 1,
+  "epochs": 2,
+  "max_seq_length": 4096
+}

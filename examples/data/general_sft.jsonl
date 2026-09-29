@@ -1,0 +1,3 @@
+{"id": "toy-general-001", "domain": "general", "prompt": "Say hello in one short sentence.", "response": "Hello, it is nice to meet you."}
+{"id": "toy-general-002", "domain": "general", "prompt": "Name a primary color.", "response": "Blue is a primary color."}
+{"id": "toy-general-003", "domain": "general", "prompt": "Translate 'thank you' into French.", "response": "'Thank you' in French is 'merci'."}

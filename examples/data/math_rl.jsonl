@@ -1,0 +1,8 @@
+{"id": "toy-math-001", "prompt": "What is 7 + 5?", "answer": "12"}
+{"id": "toy-math-002", "prompt": "What is 9 times 6?", "answer": "54"}
+{"id": "toy-math-003", "prompt": "Compute 100 - 37.", "answer": "63"}
+{"id": "toy-math-004", "prompt": "What is one half plus one quarter? Give the answer as a fraction.", "answer": "3/4"}
+{"id": "toy-math-005", "prompt": "Solve for x: 3x + 2 = 17.", "answer": "5"}
+{"id": "toy-math-006", "prompt": "What is 2 to the power of 5?", "answer": "32"}
+{"id": "toy-math-007", "prompt": "A box holds 4 rows of 8 eggs. How many eggs are in the box?", "answer": "32"}
+{"id": "toy-math-008", "prompt": "What is 0.5 multiplied by 18?", "answer": "9"}

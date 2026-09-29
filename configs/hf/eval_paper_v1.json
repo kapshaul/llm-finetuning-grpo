@@ -1,0 +1,13 @@
+{
+  "backend": "hf",
+  "model_name_or_path": "runs/hf-r1-stage4-all-rl",
+  "dataset": "examples/data/math_eval.jsonl",
+  "seed": 42,
+  "device": "cuda",
+  "num_samples": 16,
+  "temperature": 0.6,
+  "top_p": 0.95,
+  "max_prompt_tokens": 512,
+  "max_new_tokens": 32768,
+  "max_seq_length": 33280
+}

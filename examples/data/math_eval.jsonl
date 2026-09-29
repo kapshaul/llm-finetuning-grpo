@@ -1,0 +1,4 @@
+{"id": "toy-eval-001", "prompt": "What is 8 + 13?", "answer": "21"}
+{"id": "toy-eval-002", "prompt": "What is 12 divided by 4?", "answer": "3"}
+{"id": "toy-eval-003", "prompt": "Solve for y: 2y - 4 = 10.", "answer": "7"}
+{"id": "toy-eval-004", "prompt": "What is two thirds of 9?", "answer": "6"}

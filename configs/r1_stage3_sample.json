@@ -1,0 +1,13 @@
+{
+  "backend": "tiny",
+  "model_name_or_path": "runs/r1-stage2-reasoning-rl",
+  "dataset": "examples/data/math_rl.jsonl",
+  "seed": 42,
+  "device": "cpu",
+  "num_samples": 4,
+  "temperature": 0.6,
+  "top_p": 0.95,
+  "max_prompt_tokens": 1024,
+  "max_new_tokens": 64,
+  "max_seq_length": 2048
+}

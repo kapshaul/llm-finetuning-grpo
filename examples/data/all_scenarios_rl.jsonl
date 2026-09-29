@@ -1,0 +1,4 @@
+{"id": "toy-all-001", "domain": "reasoning", "prompt": "What is 9 times 6?", "answer": "54"}
+{"id": "toy-all-002", "domain": "reasoning", "prompt": "What is 2 to the power of 5?", "answer": "32"}
+{"id": "toy-all-003", "domain": "general", "prompt": "Suggest a name for a friendly pet goldfish."}
+{"id": "toy-all-004", "domain": "general", "prompt": "Give one tip for staying focused while studying."}

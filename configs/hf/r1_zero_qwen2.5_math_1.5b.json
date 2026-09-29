@@ -1,0 +1,22 @@
+{
+  "backend": "hf",
+  "stage": "zero",
+  "model_name_or_path": "Qwen/Qwen2.5-Math-1.5B",
+  "dataset": "examples/data/math_rl.jsonl",
+  "output_dir": "runs/hf-r1-zero-qwen2.5-math-1.5b",
+  "seed": 42,
+  "device": "cuda",
+  "learning_rate": 1e-06,
+  "batch_size": 1,
+  "max_steps": 50,
+  "group_size": 8,
+  "update_epochs": 1,
+  "clip_epsilon": 0.2,
+  "beta": 0.04,
+  "reduction": "sequence",
+  "max_prompt_tokens": 512,
+  "max_new_tokens": 1024,
+  "max_seq_length": 1536,
+  "temperature": 1.0,
+  "top_p": 1.0
+}
