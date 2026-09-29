@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1250" width="1000" height="1250" role="img" aria-labelledby="tp-title tp-desc">
+  <title id="tp-title">DeepSeek-R1 training pipelines: R1-Zero, R1 and distillation</title>
+  <desc id="tp-desc">Three lanes. Lane A, DeepSeek-R1-Zero: a fresh pretrained base is trained directly with GRPO using accuracy and format rewards, producing DeepSeek-R1-Zero. Lane B, DeepSeek-R1: a pretrained base goes through stage 1 cold-start SFT and stage 2 reasoning RL with accuracy and language-consistency rewards; the stage 2 checkpoint is sampled and filtered, and accepted reasoning samples plus general examples form the curated SFT data. Stage 3 mixed SFT initializes from a fresh copy of the original pretrained base, not the stage 2 weights, and trains for two epochs on the curated data. Stage 4 all-scenario RL uses rule rewards for reasoning prompts and preference rewards for general prompts and produces DeepSeek-R1. Lane C, distillation: a student model starts from its own selected checkpoint and is trained with SFT only on the same curated data, producing a distilled student; no teacher weights are transferred. Solid navy arrows carry model weights; dashed teal arrows carry training data. Stage structure follows DeepSeek-R1 v1 sections 2.2 to 2.4; this repository uses small substitute models and toy data. The diagram is conceptual and shows no results.</desc>
+  <defs>
+    <marker id="tp-ah-navy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1F3A5F"/>
+    </marker>
+    <marker id="tp-ah-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0F8B8D"/>
+    </marker>
+    <style>
+      text { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #1E293B; }
+      .title { font-size: 30px; font-weight: 700; fill: #1F3A5F; }
+      .subtitle { font-size: 18px; fill: #475569; }
+      .lane-label { font-size: 22px; font-weight: 700; fill: #1F3A5F; }
+      .lane-note { font-size: 18px; fill: #475569; font-style: italic; }
+      .h { font-size: 20px; font-weight: 700; }
+      .b { font-size: 18px; fill: #334155; }
+      .inv { fill: #FFFFFF; }
+      .data-h { font-size: 20px; font-weight: 700; fill: #0B6466; }
+      .badge-t { font-size: 18px; font-weight: 700; fill: #FFFFFF; }
+      .foot { font-size: 18px; fill: #475569; }
+      .lane { fill: #F4F6F9; stroke: #D3DAE3; stroke-width: 1.5; }
+      .model { fill: #FFFFFF; stroke: #1F3A5F; stroke-width: 2.5; }
+      .stage { fill: #EAF0F6; stroke: #64748B; stroke-width: 1.5; }
+      .out { fill: #1F3A5F; stroke: #1F3A5F; stroke-width: 2.5; }
+      .data { fill: #E8F5F4; stroke: #0F8B8D; stroke-width: 2.5; stroke-dasharray: 8 6; }
+      .w { fill: none; stroke: #1F3A5F; stroke-width: 2.5; }
+      .d { fill: none; stroke: #0F8B8D; stroke-width: 2.5; stroke-dasharray: 8 6; }
+      .badge { fill: #1F3A5F; stroke: #FFFFFF; stroke-width: 2; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1000" height="1250" fill="#FCFCFA"/>
+
+  <!-- Heading -->
+  <text class="title" x="500" y="54" text-anchor="middle">DeepSeek-R1 training pipelines</text>
+  <text class="subtitle" x="500" y="82" text-anchor="middle">Pure-RL R1-Zero, four-stage R1, and SFT-only distillation</text>
+
+  <!-- ============ Lane A: R1-Zero ============ -->
+  <rect class="lane" x="24" y="100" width="952" height="170" rx="14"/>
+  <text class="lane-label" x="44" y="134">A · DeepSeek-R1-Zero</text>
+  <text class="lane-note" x="320" y="134">RL directly on the base model, no SFT</text>
+
+  <rect class="model" x="60" y="160" width="230" height="80" rx="10"/>
+  <text class="h" x="175" y="194" text-anchor="middle">Pretrained base</text>
+  <text class="b" x="175" y="220" text-anchor="middle">fresh checkpoint</text>
+
+  <rect class="stage" x="360" y="160" width="300" height="80" rx="10"/>
+  <text class="h" x="510" y="194" text-anchor="middle">GRPO (pure RL)</text>
+  <text class="b" x="510" y="220" text-anchor="middle">rewards: accuracy + format</text>
+
+  <rect class="out" x="725" y="160" width="230" height="80" rx="10"/>
+  <text class="h inv" x="840" y="207" text-anchor="middle">DeepSeek-R1-Zero</text>
+
+  <line class="w" x1="290" y1="200" x2="358" y2="200" marker-end="url(#tp-ah-navy)"/>
+  <line class="w" x1="660" y1="200" x2="723" y2="200" marker-end="url(#tp-ah-navy)"/>
+
+  <!-- ============ Lane B: R1 ============ -->
+  <rect class="lane" x="24" y="290" width="952" height="500" rx="14"/>
+  <text class="lane-label" x="44" y="324">B · DeepSeek-R1</text>
+  <text class="lane-note" x="256" y="324">Stage 3 restarts from the fresh base; stage-2 weights only generate data</text>
+
+  <!-- Row 1 -->
+  <rect class="model" x="44" y="350" width="180" height="110" rx="10"/>
+  <text class="h" x="134" y="397" text-anchor="middle">Pretrained base</text>
+  <text class="b" x="134" y="423" text-anchor="middle">fresh checkpoint</text>
+
+  <rect class="stage" x="270" y="350" width="180" height="110" rx="10"/>
+  <text class="h" x="360" y="388" text-anchor="middle">Cold-start SFT</text>
+  <text class="b" x="360" y="414" text-anchor="middle">small long-CoT</text>
+  <text class="b" x="360" y="438" text-anchor="middle">seed data</text>
+  <circle class="badge" cx="290" cy="350" r="15"/>
+  <text class="badge-t" x="290" y="356" text-anchor="middle">1</text>
+
+  <rect class="stage" x="496" y="350" width="230" height="110" rx="10"/>
+  <text class="h" x="611" y="388" text-anchor="middle">Reasoning RL</text>
+  <text class="b" x="611" y="414" text-anchor="middle">rewards: accuracy +</text>
+  <text class="b" x="611" y="438" text-anchor="middle">language consistency</text>
+  <circle class="badge" cx="516" cy="350" r="15"/>
+  <text class="badge-t" x="516" y="356" text-anchor="middle">2</text>
+
+  <rect class="stage" x="772" y="350" width="184" height="110" rx="10"/>
+  <text class="h" x="864" y="388" text-anchor="middle">Sample + filter</text>
+  <text class="b" x="864" y="414" text-anchor="middle">from stage-2</text>
+  <text class="b" x="864" y="438" text-anchor="middle">checkpoint</text>
+
+  <line class="w" x1="224" y1="405" x2="268" y2="405" marker-end="url(#tp-ah-navy)"/>
+  <line class="w" x1="450" y1="405" x2="494" y2="405" marker-end="url(#tp-ah-navy)"/>
+  <line class="w" x1="726" y1="405" x2="770" y2="405" marker-end="url(#tp-ah-navy)"/>
+
+  <!-- Curated data -->
+  <rect class="data" x="640" y="490" width="316" height="100" rx="10"/>
+  <text class="data-h" x="798" y="522" text-anchor="middle">Curated SFT data</text>
+  <text class="b" x="798" y="548" text-anchor="middle">accepted reasoning samples</text>
+  <text class="b" x="798" y="572" text-anchor="middle">+ general examples</text>
+
+  <line class="d" x1="864" y1="460" x2="864" y2="488" marker-end="url(#tp-ah-teal)"/>
+
+  <!-- Row 2 -->
+  <rect class="model" x="44" y="630" width="190" height="130" rx="10"/>
+  <text class="h" x="139" y="672" text-anchor="middle">Pretrained base</text>
+  <text class="b" x="139" y="698" text-anchor="middle">fresh original</text>
+  <text class="b" x="139" y="722" text-anchor="middle">not stage-2 weights</text>
+
+  <rect class="stage" x="280" y="630" width="190" height="130" rx="10"/>
+  <text class="h" x="375" y="668" text-anchor="middle">Mixed SFT</text>
+  <text class="b" x="375" y="694" text-anchor="middle">init: fresh base</text>
+  <text class="b" x="375" y="718" text-anchor="middle">2 epochs on</text>
+  <text class="b" x="375" y="742" text-anchor="middle">curated data</text>
+  <circle class="badge" cx="300" cy="630" r="15"/>
+  <text class="badge-t" x="300" y="636" text-anchor="middle">3</text>
+
+  <rect class="stage" x="516" y="630" width="246" height="130" rx="10"/>
+  <text class="h" x="639" y="668" text-anchor="middle">All-scenario RL</text>
+  <text class="b" x="639" y="694" text-anchor="middle">rule rewards (reasoning)</text>
+  <text class="b" x="639" y="718" text-anchor="middle">preference rewards</text>
+  <text class="b" x="639" y="742" text-anchor="middle">(general)</text>
+  <circle class="badge" cx="536" cy="630" r="15"/>
+  <text class="badge-t" x="536" y="636" text-anchor="middle">4</text>
+
+  <rect class="out" x="800" y="655" width="156" height="80" rx="10"/>
+  <text class="h inv" x="878" y="702" text-anchor="middle">DeepSeek-R1</text>
+
+  <line class="w" x1="234" y1="695" x2="278" y2="695" marker-end="url(#tp-ah-navy)"/>
+  <line class="w" x1="470" y1="695" x2="514" y2="695" marker-end="url(#tp-ah-navy)"/>
+  <line class="w" x1="762" y1="695" x2="798" y2="695" marker-end="url(#tp-ah-navy)"/>
+
+  <!-- curated data enters mixed SFT from above -->
+  <path class="d" d="M640,540 H375 V628" marker-end="url(#tp-ah-teal)"/>
+
+  <!-- ============ Lane C: Distillation ============ -->
+  <rect class="lane" x="24" y="810" width="952" height="270" rx="14"/>
+  <text class="lane-label" x="44" y="844">C · Distillation</text>
+  <text class="lane-note" x="610" y="844">SFT only; no teacher weights</text>
+
+  <rect class="data" x="300" y="862" width="280" height="72" rx="10"/>
+  <text class="data-h" x="440" y="892" text-anchor="middle">Same curated SFT data</text>
+  <text class="b" x="440" y="918" text-anchor="middle">(repeated from lane B)</text>
+
+  <line class="d" x1="440" y1="934" x2="440" y2="968" marker-end="url(#tp-ah-teal)"/>
+
+  <rect class="model" x="44" y="970" width="210" height="90" rx="10"/>
+  <text class="h" x="149" y="1008" text-anchor="middle">Student checkpoint</text>
+  <text class="b" x="149" y="1034" text-anchor="middle">own starting model</text>
+
+  <rect class="stage" x="330" y="970" width="220" height="90" rx="10"/>
+  <text class="h" x="440" y="1008" text-anchor="middle">SFT only</text>
+  <text class="b" x="440" y="1034" text-anchor="middle">no RL stage</text>
+
+  <rect class="out" x="726" y="970" width="230" height="90" rx="10"/>
+  <text class="h inv" x="841" y="1008" text-anchor="middle">Distilled student</text>
+  <text class="b inv" x="841" y="1034" text-anchor="middle">smaller model</text>
+
+  <line class="w" x1="254" y1="1015" x2="328" y2="1015" marker-end="url(#tp-ah-navy)"/>
+  <line class="w" x1="550" y1="1015" x2="724" y2="1015" marker-end="url(#tp-ah-navy)"/>
+
+  <!-- ============ Legend ============ -->
+  <line class="w" x1="44" y1="1120" x2="102" y2="1120" marker-end="url(#tp-ah-navy)"/>
+  <text class="b" x="114" y="1126">Model weights</text>
+  <line class="d" x1="270" y1="1120" x2="328" y2="1120" marker-end="url(#tp-ah-teal)"/>
+  <text class="b" x="340" y="1126">Training data</text>
+  <rect class="out" x="490" y="1107" width="36" height="26" rx="5"/>
+  <text class="b" x="538" y="1126">Output model</text>
+  <rect class="stage" x="700" y="1107" width="36" height="26" rx="5"/>
+  <circle class="badge" cx="718" cy="1107" r="11"/>
+  <text class="b" x="748" y="1126">Numbered R1 stage</text>
+
+  <!-- ============ Footer ============ -->
+  <line x1="44" y1="1152" x2="956" y2="1152" stroke="#D3DAE3" stroke-width="1.5"/>
+  <text class="foot" x="44" y="1182">Stage structure follows DeepSeek-R1 v1 (arXiv:2501.12948), §§2.2–2.4.</text>
+  <text class="foot" x="44" y="1208">This repository mirrors the structure with small substitute models and toy data.</text>
+  <text class="foot" x="44" y="1234">Conceptual diagram: no results or benchmarks are shown.</text>
+</svg>

@@ -29,6 +29,161 @@ It implements:
 No dataset framework or RL library is used: data is JSONL, configs are JSON, and
 the training loop is plain PyTorch so every tensor can be inspected.
 
+## Academic background
+
+*Reading guide:* to run the code, skip to [Quickstart](#quickstart-offline-cpu);
+for derivations, implementation conventions and a paper-to-module map, see
+[docs/method.md](docs/method.md). Bracketed numbers refer to the
+[references](#references) below.
+
+### Research question
+
+Supervised fine-tuning (SFT) teaches a language model to imitate fixed
+demonstrations: every token of a reference trajectory is a target. DeepSeek-R1
+studies a different learning signal. When the final answer to a task can be
+checked by a rule (a number compared with a reference, a program run against
+tests), one can sample several attempts, score only their outcomes, and make the
+generation strategies that led to better outcomes more probable. The model is
+not shown *how* to reason; it is told only how well each complete attempt ended
+([1, §2.1–2.2](https://arxiv.org/html/2501.12948v1)).
+
+The paper examines this in two settings. **R1-Zero** applies reinforcement
+learning (RL) directly to a pretrained base model, rewarded only for answer
+accuracy and output format ([1, §2.2](https://arxiv.org/html/2501.12948v1)).
+**R1** responds to the readability problems and language mixing reported for
+R1-Zero, and extends training to general tasks, through a multi-stage pipeline
+that combines supervised training with RL
+([1, §2.3](https://arxiv.org/html/2501.12948v1)).
+
+Three qualifications keep the claim precise. First, "RL without SFT" means
+neither "without pretraining" (R1-Zero starts from a large pretrained model) nor
+"without supervision": reference answers and verifiers *are* supervision,
+delivered at the level of outcomes rather than tokens. Second, an outcome reward
+checks the final answer against the verifier. It does not establish that each intermediate
+step is valid, nor that the written reasoning faithfully describes the
+computation that produced the answer. Third, the behaviours the paper reports
+during RL, such as longer responses and reflection on earlier steps, are empirical
+observations for one model and data regime, not guaranteed consequences of the
+algorithm; and a longer output is not in itself evidence of better reasoning.
+
+### Training pipelines
+
+![R1-Zero, four-stage R1 and SFT-only distillation, with separate weight and data flows](docs/assets/training-pipeline.svg)
+
+*Figure 1. Method structure. Solid arrows carry model checkpoints; dashed
+arrows carry data. Stage 3 starts from the original base, and the student starts
+from its own checkpoint. Original schematic based on [1, §§2.2–2.4].*
+
+| Pipeline / stage | Initialization | Learning signal | Purpose |
+| --- | --- | --- | --- |
+| R1-Zero | pretrained base | GRPO: accuracy + format | Test whether outcome rewards alone elicit reasoning |
+| R1, 1: cold-start SFT | pretrained base | SFT on a small set of readable long-CoT examples | Readable output format and a stable starting point for RL |
+| R1, 2: reasoning RL | stage-1 checkpoint | GRPO: accuracy + language consistency | Improve reasoning while discouraging language mixing |
+| R1, 3: rejection sampling + SFT | **fresh original base**, 2 epochs | SFT on filtered stage-2 outputs mixed with general data | Consolidate reasoning together with general abilities |
+| R1, 4: all-scenario RL | stage-3 checkpoint | GRPO: rule rewards (reasoning); helpfulness on the final answer + harmlessness on the full response (general) | Improve helpfulness and harmlessness while retaining reasoning |
+| Distillation | student's own starting checkpoint | SFT only on curated stage-3 data | Transfer behaviour to a smaller model; no RL on the student |
+
+Distillation here is supervised likelihood training on teacher-generated,
+filtered sequences. It does not match the teacher's token distributions or
+logits. SFT-only describes the distillation stage, not necessarily the prior
+training history of the student checkpoint: the paper also uses an
+instruction-tuned starting model ([1, §2.4](https://arxiv.org/html/2501.12948v1)).
+
+In this repository the verifier, language scorer and preference models are
+substitute heuristics or user-supplied callbacks, the data are toy fixtures, and
+undisclosed training hyperparameters are explicit repository choices; see
+[docs/fidelity.md](docs/fidelity.md). Running the pipelines reproduces the
+*structure* of the method, not its reported results.
+
+### Group Relative Policy Optimization (GRPO)
+
+![One GRPO group: sampled completions, rewards, normalized advantages and a regularized policy update](docs/assets/grpo-update.svg)
+
+*Figure 2. A worked example of one rollout group. Values illustrate this
+repository's normalization convention; they are not experimental results.*
+
+Let $q$ be a prompt and $\pi_\theta$ the autoregressive policy being trained,
+$\pi_\theta(o \mid q) = \prod_t \pi_\theta(o_t \mid q, o_{<t})$. A rollout-policy snapshot
+$\pi_{\mathrm{old}}$ samples a group of $G$ completions $o_1, \dots, o_G$ for the
+same prompt, and each completion receives a scalar reward $r_i$.
+In this implementation, the old scores are saved for each rollout batch,
+whereas the reference policy $\pi_{\mathrm{ref}}$ is frozen at the start of an RL stage and stays fixed
+for the whole stage.
+
+GRPO, introduced in DeepSeekMath
+([2, §4.1](https://arxiv.org/html/2402.03300v3)), replaces the learned value
+critic of PPO with a baseline computed from the entire group for the *same*
+prompt. This repository uses the population standard deviation and a small
+stabilizer $\eta = 10^{-8}$:
+
+$$
+\bar r = \frac{1}{G}\sum_{j=1}^{G} r_j, \qquad
+s = \sqrt{\frac{1}{G}\sum_{j=1}^{G} (r_j - \bar r)^2}, \qquad
+\hat A_i = \frac{r_i - \bar r}{s + \eta}.
+$$
+
+Positive advantages encourage higher completion likelihoods; negative ones
+encourage lower likelihoods. These are surrogate incentives: shared model
+parameters couple the actual changes across completions. Normalization removes
+a common reward offset within a prompt, but difficulty still affects how often
+a group contains informative differences. If all $G$
+total rewards are equal, the code
+sets $\hat A_i = 0$ and the group contributes no policy-gradient signal. For
+example, rewards $(0, 1, 1, 2)$ give $\bar r = 1$ and $s = 1/\sqrt 2$, hence
+$\hat A \approx (-\sqrt 2, 0, 0, \sqrt 2)$, approximate only because of $\eta$.
+Dropping the critic removes a value network, but each prompt still costs $G$
+generations plus a forward pass of the reference model.
+
+By default the objective follows the sequence-level equations printed in R1 v1
+([1, §2.2.1, Eqs. 1–3](https://arxiv.org/html/2501.12948v1)). For one prompt,
+the quantity maximized over $\theta$ is shown below; the code averages it over
+the prompts in a batch and minimizes its negative.
+
+$$
+\rho_i = \frac{\pi_\theta(o_i \mid q)}{\pi_{\mathrm{old}}(o_i \mid q)}.
+$$
+
+$$
+\mathcal{J}(\theta) = \frac{1}{G}\sum_{i=1}^{G}\Big[\min\big(\rho_i \hat A_i,\;
+\mathrm{clip}(\rho_i, 1-\epsilon_{\mathrm{clip}}, 1+\epsilon_{\mathrm{clip}})\,\hat A_i\big)
+- \beta\, \hat D_i\Big],
+$$
+
+$$
+\hat D_i = \frac{\pi_{\mathrm{ref}}(o_i \mid q)}{\pi_\theta(o_i \mid q)}
+- \log\frac{\pi_{\mathrm{ref}}(o_i \mid q)}{\pi_\theta(o_i \mid q)} - 1 \;\ge\; 0 .
+$$
+
+Clipping removes the incentive to push $\rho_i$ beyond $1+\epsilon_{\mathrm{clip}}$
+when $\hat A_i > 0$, or below $1-\epsilon_{\mathrm{clip}}$ when $\hat A_i < 0$. It
+discourages large changes within one rollout batch but is not a hard KL bound or
+trust-region guarantee. The coefficient $\beta$ weights a penalty that keeps
+$\pi_\theta$ near $\pi_{\mathrm{ref}}$; it regularizes the objective and is not
+added to the reward, so it never enters $\hat A_i$.
+
+$\rho_i$ is a correct importance weight only if $o_i$ was actually drawn from
+$\pi_{\mathrm{old}}$. Training rollouts therefore sample the unmodified softmax
+(temperature 1, top-p 1). The evaluation setting (temperature 0.6, top-p 0.95)
+defines a different, sharpened and truncated distribution and is used only for
+sampling candidates and evaluation, never inside the ratio.
+
+DeepSeekMath's original formulation computes the ratio, clipping and KL term
+per token and averages over tokens
+([2, §4.1.2](https://arxiv.org/html/2402.03300v3)); it is available as the
+labelled `reduction="token"` variant. This repository makes no claim about which
+form DeepSeek's own training code used. See
+[docs/method.md](docs/method.md#1-grpo-objective-r1_grpocore) for the full
+derivation.
+
+### References
+
+1. DeepSeek-AI (2025). *DeepSeek-R1: Incentivizing Reasoning Capability in LLMs
+   via Reinforcement Learning.* arXiv:2501.12948v1.
+   <https://arxiv.org/html/2501.12948v1>
+2. Shao, Z. et al. (2024). *DeepSeekMath: Pushing the Limits of Mathematical
+   Reasoning in Open Language Models.* arXiv:2402.03300v3.
+   <https://arxiv.org/html/2402.03300v3>
+
 ## Quickstart (offline, CPU)
 
 Requires Python ≥ 3.11 and [uv](https://docs.astral.sh/uv/).
@@ -169,7 +324,8 @@ tests/         offline tests
 ## Citation
 
 If you use this code, please cite the DeepSeek-R1 paper; see
-[CITATION.cff](CITATION.cff).
+[CITATION.cff](CITATION.cff). If you use the GRPO objective itself, please also
+cite DeepSeekMath [2], where GRPO was introduced.
 
 ## License
 
