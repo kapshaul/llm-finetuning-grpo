@@ -37,9 +37,11 @@ objective, the second only prevents division by zero.
 
 Sequence log-likelihoods are sums of masked token log-probabilities:
 
-$$
+<!-- Display math uses ```math fences so Markdown cannot turn leading minus signs into lists or strip escapes such as \, and \;. -->
+
+```math
 \log \pi(o_i \mid q) = \sum_{t} m_{i,t}\, \log \pi(o_{i,t} \mid q, o_{i,<t}).
-$$
+```
 
 ## 1. GRPO objective (`r1_grpo.core`)
 
@@ -49,11 +51,11 @@ reward $r_i$ (Section 2).
 
 ### 1.1 Advantages: `group_advantages(rewards, eps=1e-8)`
 
-$$
+```math
 \bar r = \frac{1}{G}\sum_{j=1}^{G} r_j, \qquad
 s = \sqrt{\frac{1}{G}\sum_{j=1}^{G} (r_j - \bar r)^2}, \qquad
 \hat A_i = \frac{r_i - \bar r}{s + \eta}.
-$$
+```
 
 Conventions made explicit here (the paper does not specify them):
 
@@ -96,26 +98,26 @@ $\pi(o_i \mid q)$ [1, §2.2.1, Eqs. 1–3]. The default implementation therefore
 sums masked completion-token log-probabilities **before** forming the ratio and
 the KL term. With
 
-$$
+```math
 \rho_i = \exp\big(\log \pi_\theta(o_i \mid q) - \log \pi_{\mathrm{old}}(o_i \mid q)\big),
 \qquad
 d_i = \log \pi_{\mathrm{ref}}(o_i \mid q) - \log \pi_\theta(o_i \mid q),
-$$
+```
 
-$$
+```math
 \hat D_i = e^{d_i} - d_i - 1
 = \frac{\pi_{\mathrm{ref}}(o_i \mid q)}{\pi_\theta(o_i \mid q)}
 - \log \frac{\pi_{\mathrm{ref}}(o_i \mid q)}{\pi_\theta(o_i \mid q)} - 1,
-$$
+```
 
 the loss for a batch of $B$ prompts is
 
-$$
+```math
 \mathcal{L}_{\mathrm{seq}}(\theta) = -\frac{1}{BG}\sum_{b=1}^{B}\sum_{i=1}^{G}
 \Big[\min\big(\rho_{b,i}\hat A_{b,i},\;
 \mathrm{clip}(\rho_{b,i}, 1-\epsilon_{\mathrm{clip}}, 1+\epsilon_{\mathrm{clip}})\,\hat A_{b,i}\big)
 - \beta\,\hat D_{b,i}\Big].
-$$
+```
 
 Because every group has the same size $G$, the mean over all $BG$ completions
 equals the mean over prompts of each group's mean.
@@ -131,10 +133,10 @@ current policy then have the same parameters, so $\rho_i = 1$ in value. Clipping
 is inactive at $\rho_i = 1$, and since $\nabla_\theta \rho_i = \rho_i \nabla_\theta
 \log \pi_\theta(o_i \mid q)$, the gradient of the surrogate is
 
-$$
+```math
 \nabla_\theta\,\frac{1}{G}\sum_i \min(\cdot) \;=\; \frac{1}{G}\sum_i \hat A_i\,
 \nabla_\theta \log \pi_\theta(o_i \mid q).
-$$
+```
 
 This has the form of a REINFORCE-style estimator with a group baseline and
 group scaling. Both statistics depend on the sampled completions, including
@@ -157,10 +159,10 @@ are not clipped can still move the policy further than the clip range suggests.
 The penalty's gradient is, using $\partial \hat D_i / \partial \log
 \pi_\theta(o_i \mid q) = 1 - e^{d_i}$,
 
-$$
+```math
 \nabla_\theta \hat D_i = \Big(1 - \frac{\pi_{\mathrm{ref}}(o_i \mid q)}{\pi_\theta(o_i \mid q)}\Big)
 \nabla_\theta \log \pi_\theta(o_i \mid q).
-$$
+```
 
 It vanishes when $\pi_\theta = \pi_{\mathrm{ref}}$ on the sample, so at the
 start of a stage the penalty exerts no force. Once the policy drifts, it lowers
@@ -181,13 +183,13 @@ near $d = 0$ and avoids the cancellation in a direct `exp(d) - 1`.
 where the distribution is the one induced over completions by the sampler
 (including the token budget). Then
 
-$$
+```math
 \mathbb{E}_{o\sim\pi_\theta}\!\left[e^{d}\right]
 = \sum_{o:\,\pi_\theta(o\mid q)>0} \pi_{\mathrm{ref}}(o \mid q),
 \qquad
 \mathbb{E}_{o\sim\pi_\theta}\!\left[-d\right]
 = \mathrm{KL}\big(\pi_\theta(\cdot\mid q)\,\Vert\,\pi_{\mathrm{ref}}(\cdot\mid q)\big),
-$$
+```
 
 so $\mathbb{E}[\hat D] = \mathrm{KL}(\pi_\theta \Vert \pi_{\mathrm{ref}})$
 exactly when every completion with $\pi_{\mathrm{ref}}(o \mid q) > 0$ also has
@@ -213,12 +215,12 @@ $\rho_{i,t} = \pi_\theta(o_{i,t} \mid q, o_{i,<t}) / \pi_{\mathrm{old}}(o_{i,t} 
 $d_{i,t}$ defined analogously, $\hat D_{i,t} = e^{d_{i,t}} - d_{i,t} - 1$ and
 $\lvert o_i\rvert = \sum_t m_{i,t}$:
 
-$$
+```math
 \mathcal{L}_{\mathrm{tok}}(\theta) = -\frac{1}{BG}\sum_{b,i}\,\frac{1}{\lvert o_i\rvert}
 \sum_{t} m_{i,t}\Big[\min\big(\rho_{i,t}\hat A_i,\;
 \mathrm{clip}(\rho_{i,t}, 1-\epsilon_{\mathrm{clip}}, 1+\epsilon_{\mathrm{clip}})\,\hat A_i\big)
 - \beta\,\hat D_{i,t}\Big].
-$$
+```
 
 Tokens are averaged **within each completion first, then across completions**.
 This is not a global token-weighted mean over the batch. Every completion has
@@ -359,10 +361,10 @@ All SFT stages minimise completion-only cross-entropy. For a minibatch of
 prompt/response pairs $(x_n, y_n)$, where $y_n$ is the response tokens followed
 by EOS and $m_{n,t}$ masks retained completion positions,
 
-$$
+```math
 \mathcal{L}_{\mathrm{SFT}}(\theta) = -\,\frac{\sum_{n}\sum_{t} m_{n,t}\,
 \log \pi_\theta(y_{n,t} \mid x_n, y_{n,<t})}{\sum_{n}\sum_{t} m_{n,t}}.
-$$
+```
 
 Prompt and padding tokens are masked. If a pair exceeds `max_seq_length`, the
 completion is cut to fit and the EOS is dropped with it; EOS is supervised only
@@ -438,9 +440,9 @@ $q$ and $N$ questions.
 * **pass@1** is the mean over questions of the fraction of that question's
   samples that are correct:
 
-  $$
+  ```math
   \text{pass@1} = \frac{1}{N}\sum_{q=1}^{N}\frac{1}{k_q}\sum_{j=1}^{k_q} c_{q,j}.
-  $$
+  ```
 
   Averaging per question first avoids weighting questions by their sample
   count. For each question the inner mean is an unbiased estimate of the

@@ -116,11 +116,13 @@ critic of PPO with a baseline computed from the entire group for the *same*
 prompt. This repository uses the population standard deviation and a small
 stabilizer $\eta = 10^{-8}$:
 
-$$
+<!-- Display math uses ```math fences so Markdown cannot turn leading minus signs into lists or strip escapes such as \, and \;. -->
+
+```math
 \bar r = \frac{1}{G}\sum_{j=1}^{G} r_j, \qquad
 s = \sqrt{\frac{1}{G}\sum_{j=1}^{G} (r_j - \bar r)^2}, \qquad
 \hat A_i = \frac{r_i - \bar r}{s + \eta}.
-$$
+```
 
 Positive advantages encourage higher completion likelihoods; negative ones
 encourage lower likelihoods. These are surrogate incentives: shared model
@@ -139,20 +141,20 @@ By default the objective follows the sequence-level equations printed in R1 v1
 the quantity maximized over $\theta$ is shown below; the code averages it over
 the prompts in a batch and minimizes its negative.
 
-$$
+```math
 \rho_i = \frac{\pi_\theta(o_i \mid q)}{\pi_{\mathrm{old}}(o_i \mid q)}.
-$$
+```
 
-$$
+```math
 \mathcal{J}(\theta) = \frac{1}{G}\sum_{i=1}^{G}\Big[\min\big(\rho_i \hat A_i,\;
 \mathrm{clip}(\rho_i, 1-\epsilon_{\mathrm{clip}}, 1+\epsilon_{\mathrm{clip}})\,\hat A_i\big)
 - \beta\, \hat D_i\Big],
-$$
+```
 
-$$
+```math
 \hat D_i = \frac{\pi_{\mathrm{ref}}(o_i \mid q)}{\pi_\theta(o_i \mid q)}
 - \log\frac{\pi_{\mathrm{ref}}(o_i \mid q)}{\pi_\theta(o_i \mid q)} - 1 \;\ge\; 0 .
-$$
+```
 
 Clipping removes the incentive to push $\rho_i$ beyond $1+\epsilon_{\mathrm{clip}}$
 when $\hat A_i > 0$, or below $1-\epsilon_{\mathrm{clip}}$ when $\hat A_i < 0$. It
